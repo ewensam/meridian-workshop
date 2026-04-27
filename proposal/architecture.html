@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian Components — System Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #0a1120;
+    border-bottom: 1px solid #1e293b;
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header .title { font-size: 18px; font-weight: 700; color: #f8fafc; }
+  header .meta { font-size: 13px; color: #475569; }
+
+  nav {
+    background: #0a1120;
+    border-bottom: 1px solid #1e293b;
+    padding: 0 48px;
+    display: flex;
+    gap: 0;
+  }
+  nav button {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #64748b;
+    padding: 14px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  nav button:hover { color: #e2e8f0; }
+  nav button.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+
+  .content { display: none; padding: 40px 48px; max-width: 1400px; margin: 0 auto; }
+  .content.active { display: block; }
+
+  h2 { font-size: 24px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; }
+  .section-desc { font-size: 15px; color: #64748b; margin-bottom: 32px; }
+
+  /* Overview diagram */
+  .diagram {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 48px;
+    background: #0a1120;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .layer {
+    flex: 1;
+    padding: 28px 24px;
+    border-right: 1px solid #1e293b;
+  }
+  .layer:last-child { border-right: none; }
+  .layer-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #38bdf8;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .layer-item {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #cbd5e1;
+  }
+  .layer-item .sub { font-size: 11px; color: #475569; margin-top: 3px; }
+  .layer-item.highlight { border-color: #38bdf8; background: #0f2942; }
+  .layer-item.warning { border-color: #f59e0b; background: #1f1500; }
+
+  .arrow-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    flex: 0 0 40px;
+    color: #334155;
+    font-size: 20px;
+  }
+
+  /* Cards grid */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .card {
+    background: #0a1120;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card h3 { font-size: 15px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+  .card .tag { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #38bdf8; margin-bottom: 10px; }
+  .card p { font-size: 13px; color: #64748b; line-height: 1.6; }
+  .card ul { list-style: none; margin-top: 10px; }
+  .card ul li { font-size: 13px; color: #64748b; padding: 3px 0; border-bottom: 1px solid #1e293b; }
+  .card ul li:last-child { border-bottom: none; }
+  .card ul li code { font-family: monospace; font-size: 12px; color: #94a3b8; background: #1e293b; padding: 1px 5px; border-radius: 3px; }
+
+  /* Flow diagram */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .flow-step {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #cbd5e1;
+    white-space: nowrap;
+  }
+  .flow-step.highlight { background: #0f2942; border-color: #38bdf8; color: #7dd3fc; }
+  .flow-arrow { color: #334155; padding: 0 8px; font-size: 16px; }
+
+  /* Endpoints table */
+  .ep-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .ep-table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+  .ep-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #0f172a; }
+  .ep-table tr:hover td { background: #0f172a; }
+  .method { font-family: monospace; font-size: 12px; background: #1e293b; padding: 2px 8px; border-radius: 4px; color: #38bdf8; }
+  .path { font-family: monospace; font-size: 13px; color: #94a3b8; }
+  .filters-cell { font-size: 12px; color: #475569; }
+
+  /* Data files */
+  .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .data-file { background: #0a1120; border: 1px solid #1e293b; border-radius: 10px; padding: 18px; }
+  .data-file .fname { font-family: monospace; font-size: 13px; color: #38bdf8; margin-bottom: 8px; }
+  .data-file .fsize { font-size: 11px; color: #475569; margin-bottom: 8px; }
+  .data-file p { font-size: 12px; color: #64748b; line-height: 1.5; }
+
+  /* Debt list */
+  .debt-list { display: flex; flex-direction: column; gap: 12px; }
+  .debt-item { background: #0a1120; border-left: 3px solid #f59e0b; border-radius: 0 10px 10px 0; padding: 16px 20px; }
+  .debt-item.info { border-left-color: #38bdf8; }
+  .debt-item h4 { font-size: 14px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; }
+  .debt-item p { font-size: 13px; color: #64748b; line-height: 1.5; }
+
+  h3.section { font-size: 16px; font-weight: 700; color: #f1f5f9; margin: 28px 0 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="title">Meridian Components — Inventory Dashboard</div>
+    <div class="meta">Architecture Overview · Delivered by Accenture · April 2026</div>
+  </div>
+  <div style="font-size:13px;color:#475569;">Confidential · For IT Handoff</div>
+</header>
+
+<nav>
+  <button class="active" onclick="show('overview')">Overview</button>
+  <button onclick="show('frontend')">Frontend</button>
+  <button onclick="show('backend')">Backend</button>
+  <button onclick="show('data')">Data Layer</button>
+  <button onclick="show('flows')">Key Flows</button>
+  <button onclick="show('debt')">Constraints</button>
+</nav>
+
+<!-- OVERVIEW -->
+<div class="content active" id="overview">
+  <h2>System Overview</h2>
+  <p class="section-desc">A Vue 3 single-page application backed by a Python FastAPI service. All data is held in JSON files on the server — there is no external database.</p>
+
+  <div class="diagram">
+    <div class="layer">
+      <div class="layer-title">Browser</div>
+      <div class="layer-item highlight">Vue 3 SPA<div class="sub">localhost:3000 · Vite dev server</div></div>
+      <div class="layer-item">7 Views<div class="sub">Dashboard, Inventory, Orders, Spending, Demand, Reports, Backlog</div></div>
+      <div class="layer-item">3 Composables<div class="sub">useFilters · useI18n · useAuth</div></div>
+      <div class="layer-item">9 Components<div class="sub">FilterBar + 7 modals + ProfileMenu</div></div>
+    </div>
+    <div class="arrow-col">→</div>
+    <div class="layer">
+      <div class="layer-title">HTTP (axios)</div>
+      <div class="layer-item">api.js<div class="sub">Centralised Axios client</div></div>
+      <div class="layer-item">Query params<div class="sub">warehouse · category · status · month</div></div>
+      <div class="layer-item">JSON responses<div class="sub">Typed by Pydantic on server</div></div>
+    </div>
+    <div class="arrow-col">→</div>
+    <div class="layer">
+      <div class="layer-title">API Server</div>
+      <div class="layer-item highlight">FastAPI (Python)<div class="sub">localhost:8001 · Uvicorn</div></div>
+      <div class="layer-item">14 GET endpoints<div class="sub">Inventory · Orders · Reports · Spending · Demand · Backlog · Dashboard</div></div>
+      <div class="layer-item">Pydantic models<div class="sub">Request/response validation</div></div>
+    </div>
+    <div class="arrow-col">→</div>
+    <div class="layer">
+      <div class="layer-title">Data Layer</div>
+      <div class="layer-item warning">JSON files<div class="sub">server/data/ · loaded at startup</div></div>
+      <div class="layer-item">7 files<div class="sub">inventory · orders · demand · backlog · spending · transactions · purchase_orders</div></div>
+      <div class="layer-item">In-memory<div class="sub">No writes — read-only at runtime</div></div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="tag">Frontend stack</div>
+      <h3>Vue 3 + Vite</h3>
+      <p>Single-page app served by Vite on port 3000. Composition API throughout, with shared state via reactive composables (no Vuex/Pinia).</p>
+    </div>
+    <div class="card">
+      <div class="tag">Backend stack</div>
+      <h3>Python FastAPI</h3>
+      <p>REST API on port 8001. All filtering happens in Python on in-memory data. Pydantic validates all responses. CORS open for local dev.</p>
+    </div>
+    <div class="card">
+      <div class="tag">Data persistence</div>
+      <h3>JSON files (no database)</h3>
+      <p>Seven JSON files in <code style="font-family:monospace;font-size:12px;color:#94a3b8;">server/data/</code> loaded into memory at server startup. Changes do not persist across restarts.</p>
+    </div>
+    <div class="card">
+      <div class="tag">i18n</div>
+      <h3>English + Japanese</h3>
+      <p>Two locale files (en.js, ja.js). Locale stored in localStorage. Currency format switches automatically (USD ↔ JPY).</p>
+    </div>
+  </div>
+</div>
+
+<!-- FRONTEND -->
+<div class="content" id="frontend">
+  <h2>Frontend Architecture</h2>
+  <p class="section-desc">Vue 3 Composition API. Shared filter state is managed by a singleton composable — no external state library needed.</p>
+
+  <h3 class="section">Views</h3>
+  <div class="cards">
+    <div class="card"><div class="tag">Route: /</div><h3>Dashboard</h3><p>KPI cards, order health donut, inventory-by-category bar chart, shortages table, top products. Calls 4 endpoints in parallel.</p></div>
+    <div class="card"><div class="tag">Route: /inventory</div><h3>Inventory</h3><p>Stock levels table with search and warehouse/category filters. Click-through to item detail modal.</p></div>
+    <div class="card"><div class="tag">Route: /orders</div><h3>Orders</h3><p>Summary stat cards + full orders table. Expandable rows show line items. All 4 filters apply.</p></div>
+    <div class="card"><div class="tag">Route: /spending</div><h3>Spending</h3><p>Revenue vs costs bar chart, monthly cost flow stacked chart, category breakdown, recent transactions.</p></div>
+    <div class="card"><div class="tag">Route: /demand</div><h3>Demand</h3><p>Trend cards (increasing/stable/decreasing) and demand forecast table with change % and trend badges.</p></div>
+    <div class="card"><div class="tag">Route: /reports</div><h3>Reports</h3><p>Quarterly performance table, monthly revenue bar chart, month-over-month analysis. All 4 filters apply.</p></div>
+  </div>
+
+  <h3 class="section">Composables (shared logic)</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="tag">useFilters.js</div>
+      <h3>Global filter state</h3>
+      <p>Singleton pattern — all views share the same refs. FilterBar writes; views read and watch.</p>
+      <ul>
+        <li><code>selectedPeriod</code> → month param</li>
+        <li><code>selectedLocation</code> → warehouse param</li>
+        <li><code>selectedCategory</code> → category param</li>
+        <li><code>selectedStatus</code> → status param</li>
+        <li><code>getCurrentFilters()</code> maps state to API params</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="tag">useI18n.js</div>
+      <h3>Internationalisation</h3>
+      <p>Locale stored in localStorage. Falls back to English if key missing in Japanese.</p>
+      <ul>
+        <li><code>t(key)</code> — translation lookup</li>
+        <li><code>currentCurrency</code> — USD or JPY</li>
+        <li><code>translateWarehouse()</code> — city names</li>
+        <li><code>translateProductName()</code></li>
+        <li><code>setLocale('ja')</code> — switches + persists</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="tag">useAuth.js</div>
+      <h3>User / auth state</h3>
+      <p>Mock auth only — <code>isAuthenticated</code> hardcoded to true. User profile data is static. Not connected to any identity provider.</p>
+      <ul>
+        <li>Current user: John Doe / 田中 太郎 (locale-aware)</li>
+        <li><code>logout()</code> — shows alert, no session logic</li>
+        <li>No roles or permissions</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="section">api.js — centralised HTTP client</h3>
+  <div class="card" style="margin-bottom:0">
+    <p style="margin-bottom:12px;">All HTTP calls go through a single exported <code style="font-family:monospace;font-size:12px;color:#94a3b8;">api</code> object using axios. Base URL: <code style="font-family:monospace;font-size:12px;color:#94a3b8;">http://localhost:8001/api</code>. Filters passed as query string params — values of <code style="font-family:monospace;font-size:12px;color:#94a3b8;">'all'</code> are omitted.</p>
+  </div>
+</div>
+
+<!-- BACKEND -->
+<div class="content" id="backend">
+  <h2>Backend API</h2>
+  <p class="section-desc">FastAPI on port 8001. All endpoints are GET — the API is currently read-only. Filtering is applied in Python against in-memory data loaded from JSON files.</p>
+
+  <table class="ep-table">
+    <thead>
+      <tr><th>Method</th><th>Path</th><th>Description</th><th>Filters</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/inventory</td><td style="font-size:13px;color:#cbd5e1;">All inventory items</td><td class="filters-cell">warehouse, category</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/inventory/{id}</td><td style="font-size:13px;color:#cbd5e1;">Single inventory item</td><td class="filters-cell">—</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/orders</td><td style="font-size:13px;color:#cbd5e1;">All orders</td><td class="filters-cell">warehouse, category, status, month</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/orders/{id}</td><td style="font-size:13px;color:#cbd5e1;">Single order</td><td class="filters-cell">—</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/demand</td><td style="font-size:13px;color:#cbd5e1;">Demand forecasts</td><td class="filters-cell">—</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/backlog</td><td style="font-size:13px;color:#cbd5e1;">Backlog / shortage items</td><td class="filters-cell">—</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/dashboard/summary</td><td style="font-size:13px;color:#cbd5e1;">Aggregated KPI stats</td><td class="filters-cell">warehouse, category, status, month</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/reports/quarterly</td><td style="font-size:13px;color:#cbd5e1;">Quarterly performance aggregation</td><td class="filters-cell">warehouse, category, status, month</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/reports/monthly-trends</td><td style="font-size:13px;color:#cbd5e1;">Month-over-month aggregation</td><td class="filters-cell">warehouse, category, status, month</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/spending/summary</td><td style="font-size:13px;color:#cbd5e1;">Financial KPI summary</td><td class="filters-cell">—</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/spending/monthly</td><td style="font-size:13px;color:#cbd5e1;">Monthly cost breakdown</td><td class="filters-cell">—</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/spending/categories</td><td style="font-size:13px;color:#cbd5e1;">Spend by category</td><td class="filters-cell">—</td></tr>
+      <tr><td><span class="method">GET</span></td><td class="path">/api/spending/transactions</td><td style="font-size:13px;color:#cbd5e1;">Recent transactions</td><td class="filters-cell">—</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:13px;color:#475569;">Note: <code style="font-family:monospace;font-size:12px;color:#64748b;">/api/tasks</code> and <code style="font-family:monospace;font-size:12px;color:#64748b;">/api/purchase-orders</code> are called by the frontend but not implemented on the backend. POST/PATCH/DELETE endpoints are not yet implemented.</p>
+</div>
+
+<!-- DATA LAYER -->
+<div class="content" id="data">
+  <h2>Data Layer</h2>
+  <p class="section-desc">Seven JSON files in <code style="font-family:monospace;font-size:13px;color:#94a3b8;">server/data/</code>. All data is loaded into Python memory at server startup via <code style="font-family:monospace;font-size:13px;color:#94a3b8;">mock_data.py</code>. There is no database — mutations do not persist.</p>
+
+  <div class="data-grid">
+    <div class="data-file">
+      <div class="fname">inventory.json</div>
+      <div class="fsize">~10 KB · ~50 SKUs</div>
+      <p>id, sku, name, category, warehouse, quantity_on_hand, reorder_point, unit_cost, location, last_updated. Warehouses: San Francisco, London, Tokyo.</p>
+    </div>
+    <div class="data-file">
+      <div class="fname">orders.json</div>
+      <div class="fsize">~154 KB · 1,000+ orders</div>
+      <p>id, order_number, customer, items[], status, warehouse, category, order_date, expected_delivery, total_value. Dates: 2025-01 to 2025-12.</p>
+    </div>
+    <div class="data-file">
+      <div class="fname">demand_forecasts.json</div>
+      <div class="fsize">~2 KB · 9 records</div>
+      <p>id, item_sku, item_name, current_demand, forecasted_demand, trend (increasing/stable/decreasing), period.</p>
+    </div>
+    <div class="data-file">
+      <div class="fname">backlog_items.json</div>
+      <div class="fsize">~1 KB · 4 items</div>
+      <p>id, order_id, item_sku, item_name, quantity_needed, quantity_available, days_delayed, priority. Represents unfulfillable orders.</p>
+    </div>
+    <div class="data-file">
+      <div class="fname">spending.json</div>
+      <div class="fsize">~3 KB · nested object</div>
+      <p>Three keys: spending_summary (KPIs), monthly_spending (12 months × 4 cost types), category_spending (4 categories).</p>
+    </div>
+    <div class="data-file">
+      <div class="fname">transactions.json</div>
+      <div class="fsize">~14 KB · 100+ records</div>
+      <p>id, date, description, category, warehouse, amount, vendor, type. September 2025 transactions.</p>
+    </div>
+    <div class="data-file" style="border-color:#f59e0b20;">
+      <div class="fname" style="color:#f59e0b;">purchase_orders.json</div>
+      <div class="fsize">Empty — []</div>
+      <p>Schema ready (id, backlog_item_id, supplier_name, quantity, unit_cost, expected_delivery_date, status). Populated when users create POs — not yet persisted.</p>
+    </div>
+  </div>
+</div>
+
+<!-- KEY FLOWS -->
+<div class="content" id="flows">
+  <h2>Key Data Flows</h2>
+  <p class="section-desc">How state and data move through the system from user action to rendered output.</p>
+
+  <h3 class="section">Filter change → updated table</h3>
+  <div class="flow">
+    <div class="flow-step highlight">User selects filter</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">FilterBar.vue</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">useFilters singleton</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">watch() in view</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">getCurrentFilters()</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">api.js → axios</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">FastAPI endpoint</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">in-memory filter</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">JSON response</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">Vue reactivity → re-render</div>
+  </div>
+
+  <h3 class="section">Dashboard load (parallel fetching)</h3>
+  <div class="flow">
+    <div class="flow-step highlight">onMounted()</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Promise.all([ ... ])</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">getDashboardSummary</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-step">getBacklog</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-step">getOrders</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-step">getInventory</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">computed properties → charts</div>
+  </div>
+
+  <h3 class="section">Locale switch → full UI update</h3>
+  <div class="flow">
+    <div class="flow-step highlight">LanguageSwitcher click</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">setLocale('ja')</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">currentLocale ref updates</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">localStorage saved</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">all t() calls re-evaluate</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">currency → JPY</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">full UI re-renders in Japanese</div>
+  </div>
+
+  <h3 class="section">Server startup → data in memory</h3>
+  <div class="flow">
+    <div class="flow-step highlight">uv run python main.py</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">mock_data.py runs</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">7 JSON files read from disk</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">Python lists in memory</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">all requests filter these lists</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">no disk I/O at request time</div>
+  </div>
+</div>
+
+<!-- CONSTRAINTS -->
+<div class="content" id="debt">
+  <h2>Constraints &amp; Known Limitations</h2>
+  <p class="section-desc">Items Meridian IT should be aware of for future maintenance and development.</p>
+
+  <div class="debt-list">
+    <div class="debt-item">
+      <h4>No database — JSON file persistence</h4>
+      <p>All data is loaded from flat JSON files at server startup and held in memory. Mutations (creating purchase orders, adding tasks) are not persisted — a server restart resets all data. Adding a real database (PostgreSQL, SQLite) is the recommended next step before any production use.</p>
+    </div>
+    <div class="debt-item">
+      <h4>Unimplemented mutation endpoints</h4>
+      <p>The frontend API client has methods for tasks (create/delete/toggle) and purchase orders (create/retrieve), and the Pydantic schemas are defined. However, the corresponding FastAPI endpoints do not exist. These calls fail silently in the current UI.</p>
+    </div>
+    <div class="debt-item">
+      <h4>No pagination</h4>
+      <p>orders.json is 154 KB with 1,000+ orders. All records are fetched in a single response on every filter change. For larger datasets this will become a performance problem. Recommend adding offset/limit query params and paginating the orders and transactions endpoints first.</p>
+    </div>
+    <div class="debt-item">
+      <h4>TasksModal.vue still on Options API</h4>
+      <p>One component (TasksModal) was not migrated to Composition API during the previous vendor's work. Functionally it works, but it is inconsistent with the rest of the codebase. Low risk; recommend migrating when the component is next touched.</p>
+    </div>
+    <div class="debt-item info">
+      <h4>No authentication</h4>
+      <p>isAuthenticated is hardcoded to true in useAuth.js. All API endpoints are open with no authorization checks. This is appropriate for an internal intranet tool but should be addressed before any external or internet-facing deployment.</p>
+    </div>
+    <div class="debt-item info">
+      <h4>CORS open in development</h4>
+      <p>The FastAPI server allows all origins (allow_origins=["*"]). This is intentional for local development but must be restricted to the actual frontend origin before any production deployment.</p>
+    </div>
+    <div class="debt-item info">
+      <h4>Hardcoded API base URL</h4>
+      <p>api.js hardcodes http://localhost:8001/api. For deployment to any environment other than a developer's machine, this will need to be replaced with an environment variable (e.g. VITE_API_BASE_URL in a .env file).</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(id) {
+    document.querySelectorAll('.content').forEach(el => el.classList.remove('active'))
+    document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'))
+    document.getElementById(id).classList.add('active')
+    event.target.classList.add('active')
+  }
+</script>
+</body>
+</html>
